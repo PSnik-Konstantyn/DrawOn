@@ -26,6 +26,8 @@ class OverlayWindow(QMainWindow):
         self.pen_color = QColor(0, 255, 0)
         self.pen_thickness = 5
 
+        self.undo_stack = [self.image.copy()]
+
         self.settings_window = None
         self.create_settings_window()
 
@@ -111,6 +113,7 @@ class OverlayWindow(QMainWindow):
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton and self.drawing:
             self.drawing = False
+            self.save_state()
         elif event.button() == Qt.RightButton and self.drawing_line:
             self.drawing_line = False
             painter = QPainter(self.image)
@@ -118,6 +121,7 @@ class OverlayWindow(QMainWindow):
             painter.setPen(pen)
             painter.drawLine(self.start_pos, self.end_pos)
             self.update()
+            self.save_state()
         elif event.button() == Qt.LeftButton and self.drawing_rect:
             self.drawing_rect = False
             painter = QPainter(self.image)
@@ -126,14 +130,17 @@ class OverlayWindow(QMainWindow):
             rect = self.get_rect(self.start_pos, self.end_pos)
             painter.drawRect(rect)
             self.update()
+            self.save_state()
         elif event.button() == Qt.RightButton and self.drawing_filled_rect:
             self.drawing_filled_rect = False
             painter = QPainter(self.image)
+            painter.setPen(Qt.NoPen)
             brush = QBrush(self.pen_color)
             painter.setBrush(brush)
             rect = self.get_rect(self.start_pos, self.end_pos)
             painter.drawRect(rect)
             self.update()
+            self.save_state()
 
     def get_rect(self, start, end):
         return QRect(min(start.x(), end.x()), min(start.y(), end.y()), abs(start.x() - end.x()), abs(start.y() - end.y()))
@@ -143,6 +150,8 @@ class OverlayWindow(QMainWindow):
             self.close()
         elif event.key() == Qt.Key_S:
             self.toggle_settings_window()
+        elif event.key() == Qt.Key_Z and event.modifiers() == Qt.ControlModifier:
+            self.undo()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -152,15 +161,27 @@ class OverlayWindow(QMainWindow):
             painter.setPen(pen)
             painter.drawLine(self.start_pos, self.end_pos)
         elif self.drawing_rect or self.drawing_filled_rect:
-            pen = QPen(self.pen_color, self.pen_thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-            painter.setPen(pen)
             rect = self.get_rect(self.start_pos, self.end_pos)
             if self.drawing_rect:
+                pen = QPen(self.pen_color, self.pen_thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                painter.setPen(pen)
                 painter.drawRect(rect)
             elif self.drawing_filled_rect:
+                painter.setPen(Qt.NoPen)
                 brush = QBrush(self.pen_color)
                 painter.setBrush(brush)
                 painter.drawRect(rect)
+
+    def save_state(self):
+        self.undo_stack.append(self.image.copy())
+        if len(self.undo_stack) > 10:
+            self.undo_stack.pop(0)
+
+    def undo(self):
+        if len(self.undo_stack) > 1:
+            self.undo_stack.pop()
+            self.image = self.undo_stack[-1].copy()
+            self.update()
 
 
 if __name__ == "__main__":
