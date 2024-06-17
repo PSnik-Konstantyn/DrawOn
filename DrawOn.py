@@ -3,7 +3,6 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QColorDialog, QSlider, QV
 from PyQt5.QtCore import Qt, QPoint, QRect
 from PyQt5.QtGui import QPainter, QPen, QColor, QImage, QPalette, QBrush
 
-
 class OverlayWindow(QMainWindow):
     def __init__(self):
         super().__init__()

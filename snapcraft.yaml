@@ -1,0 +1,22 @@
+name: draw-on
+version: '1.0'
+summary: Simple overlay drawing tool
+description: |
+  This application allows users to draw on screen using various tools like freehand lines, straight lines, and rectangles.
+
+base: core20
+grade: stable
+confinement: strict
+
+apps:
+  overlay-drawing-tool:
+    command: bin/draw-on
+    plugs: [x11, unity7, home, network, gsettings]
+
+parts:
+  overlay-drawing-tool:
+    plugin: python
+    source: .
+    stage-packages:
+      - python3-pyqt5
+      - python3
