@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QColorDialog, QSlider, QV
 from PyQt5.QtCore import Qt, QPoint, QRect
 from PyQt5.QtGui import QPainter, QPen, QColor, QImage, QPalette, QBrush
 
+
 class OverlayWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -28,9 +29,9 @@ class OverlayWindow(QMainWindow):
         self.undo_stack = [self.image.copy()]
 
         self.settings_window = None
-        self.create_settings_window()
+        self.open_settings_window()
 
-    def create_settings_window(self):
+    def open_settings_window(self):
         if self.settings_window is None:
             self.settings_window = QWidget(self)
             layout = QVBoxLayout(self.settings_window)
