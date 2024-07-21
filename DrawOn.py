@@ -13,7 +13,6 @@ class OverlayWindow(QMainWindow):
         screen_size = QApplication.desktop().availableGeometry()
         self.setGeometry(screen_size)
         self.show()
-
         self.drawing = False
         self.drawing_line = False
         self.drawing_rect = False
