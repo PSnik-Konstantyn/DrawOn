@@ -17,6 +17,7 @@ class OverlayWindow(QMainWindow):
         self.drawing_line = False
         self.drawing_rect = False
         self.drawing_filled_rect = False
+        self.erasing = False
         self.start_pos = QPoint()
         self.end_pos = QPoint()
         self.image = QImage(self.size(), QImage.Format_ARGB32)
@@ -151,6 +152,8 @@ class OverlayWindow(QMainWindow):
             self.toggle_settings_window()
         elif event.key() == Qt.Key_Z and event.modifiers() == Qt.ControlModifier:
             self.undo()
+        elif event.key() == Qt.Key_E:
+            self.erasing = not self.erasing
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -181,6 +184,15 @@ class OverlayWindow(QMainWindow):
             self.undo_stack.pop()
             self.image = self.undo_stack[-1].copy()
             self.update()
+
+    def wheelEvent(self, event):
+        delta = event.angleDelta().y()
+        if delta > 0:
+            self.pen_thickness = min(self.pen_thickness + 1, 20)
+        else:
+            self.pen_thickness = max(self.pen_thickness - 1, 1)
+        self.thickness_slider.setValue(self.pen_thickness)
+        self.update()
 
 
 if __name__ == "__main__":
