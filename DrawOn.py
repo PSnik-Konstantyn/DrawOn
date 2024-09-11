@@ -25,6 +25,7 @@ class OverlayWindow(QMainWindow):
 
         self.pen_color = QColor(0, 255, 0)
         self.pen_thickness = 5
+        self.eraser_thickness = 10
 
         self.undo_stack = [self.image.copy()]
 
@@ -45,11 +46,22 @@ class OverlayWindow(QMainWindow):
             self.thickness_slider.setTickInterval(1)
             self.thickness_slider.valueChanged.connect(self.change_thickness)
 
+            eraser_label = QLabel("Eraser Thickness", self.settings_window)
+            self.eraser_slider = QSlider(Qt.Horizontal, self.settings_window)
+            self.eraser_slider.setMinimum(1)
+            self.eraser_slider.setMaximum(50)
+            self.eraser_slider.setValue(self.eraser_thickness)
+            self.eraser_slider.setTickPosition(QSlider.TicksBelow)
+            self.eraser_slider.setTickInterval(1)
+            self.eraser_slider.valueChanged.connect(self.change_eraser_thickness)
+
             color_button = QPushButton("Color", self.settings_window)
             color_button.clicked.connect(self.choose_color)
 
             layout.addWidget(thickness_label)
             layout.addWidget(self.thickness_slider)
+            layout.addWidget(eraser_label)
+            layout.addWidget(self.eraser_slider)
             layout.addWidget(color_button)
 
             self.settings_window.setLayout(layout)
@@ -61,7 +73,7 @@ class OverlayWindow(QMainWindow):
 
             self.settings_window.setWindowTitle("Settings")
             self.settings_window.setWindowFlags(Qt.WindowStaysOnTopHint)
-            self.settings_window.setGeometry(50, 50, 200, 150)
+            self.settings_window.setGeometry(50, 50, 200, 200)
             self.settings_window.show()
 
     def toggle_settings_window(self):
@@ -79,26 +91,36 @@ class OverlayWindow(QMainWindow):
     def change_thickness(self, value):
         self.pen_thickness = value
 
+    def change_eraser_thickness(self, value):
+        self.eraser_thickness = value
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            if event.modifiers() == Qt.ControlModifier:
-                self.drawing_rect = True
-            else:
-                self.drawing = True
             self.start_pos = event.pos()
             self.end_pos = self.start_pos
+            if self.erasing:
+                self.drawing = True
+            else:
+                if event.modifiers() == Qt.ControlModifier:
+                    self.drawing_rect = True
+                else:
+                    self.drawing = True
         elif event.button() == Qt.RightButton:
+            self.start_pos = event.pos()
+            self.end_pos = self.start_pos
             if event.modifiers() == Qt.ControlModifier:
                 self.drawing_filled_rect = True
             else:
                 self.drawing_line = True
-            self.start_pos = event.pos()
-            self.end_pos = self.start_pos
 
     def mouseMoveEvent(self, event):
         if self.drawing and event.buttons() & Qt.LeftButton:
             painter = QPainter(self.image)
-            pen = QPen(self.pen_color, self.pen_thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            if self.erasing:
+                painter.setCompositionMode(QPainter.CompositionMode_Clear)
+                pen = QPen(Qt.transparent, self.eraser_thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            else:
+                pen = QPen(self.pen_color, self.pen_thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
             painter.setPen(pen)
             painter.drawLine(self.start_pos, event.pos())
             self.start_pos = event.pos()
@@ -187,11 +209,18 @@ class OverlayWindow(QMainWindow):
 
     def wheelEvent(self, event):
         delta = event.angleDelta().y()
-        if delta > 0:
-            self.pen_thickness = min(self.pen_thickness + 1, 20)
+        if self.erasing:
+            if delta > 0:
+                self.eraser_thickness = min(self.eraser_thickness + 1, 50)
+            else:
+                self.eraser_thickness = max(self.eraser_thickness - 1, 1)
+            self.eraser_slider.setValue(self.eraser_thickness)
         else:
-            self.pen_thickness = max(self.pen_thickness - 1, 1)
-        self.thickness_slider.setValue(self.pen_thickness)
+            if delta > 0:
+                self.pen_thickness = min(self.pen_thickness + 1, 20)
+            else:
+                self.pen_thickness = max(self.pen_thickness - 1, 1)
+            self.thickness_slider.setValue(self.pen_thickness)
         self.update()
 
 
@@ -199,3 +228,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     overlay = OverlayWindow()
     sys.exit(app.exec_())
+
+#erase with the rectangle
+#change the start window when changing the mode
