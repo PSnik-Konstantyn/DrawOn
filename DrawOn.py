@@ -13,6 +13,7 @@ class OverlayWindow(QMainWindow):
         screen_size = QApplication.desktop().availableGeometry()
         self.setGeometry(screen_size)
         self.show()
+
         self.drawing = False
         self.drawing_line = False
         self.drawing_rect = False
@@ -20,6 +21,7 @@ class OverlayWindow(QMainWindow):
         self.erasing = False
         self.start_pos = QPoint()
         self.end_pos = QPoint()
+
         self.image = QImage(self.size(), QImage.Format_ARGB32)
         self.image.fill(Qt.transparent)
 
@@ -95,22 +97,29 @@ class OverlayWindow(QMainWindow):
         self.start_pos = event.pos()
         self.end_pos = self.start_pos
 
-        if self.erasing:
-            if event.button() == Qt.LeftButton:
-                self.drawing = True
-            elif event.button() == Qt.RightButton:
-                self.drawing_line = True
+        if self.erasing and event.modifiers() == Qt.ControlModifier and event.button() == Qt.RightButton:
+            return
+
+        if self.erasing and event.modifiers() == Qt.ControlModifier:
+            if event.button() == Qt.LeftButton or event.button() == Qt.RightButton:
+                self.drawing_rect = True
         else:
-            if event.button() == Qt.LeftButton:
-                if event.modifiers() == Qt.ControlModifier:
-                    self.drawing_rect = True
-                else:
+            if self.erasing:
+                if event.button() == Qt.LeftButton:
                     self.drawing = True
-            elif event.button() == Qt.RightButton:
-                if event.modifiers() == Qt.ControlModifier:
-                    self.drawing_filled_rect = True
-                else:
+                elif event.button() == Qt.RightButton:
                     self.drawing_line = True
+            else:
+                if event.button() == Qt.LeftButton:
+                    if event.modifiers() == Qt.ControlModifier:
+                        self.drawing_rect = True
+                    else:
+                        self.drawing = True
+                elif event.button() == Qt.RightButton:
+                    if event.modifiers() == Qt.ControlModifier:
+                        self.drawing_filled_rect = True
+                    else:
+                        self.drawing_line = True
 
     def mouseMoveEvent(self, event):
         if self.drawing and event.buttons() & Qt.LeftButton:
@@ -147,6 +156,14 @@ class OverlayWindow(QMainWindow):
             painter.drawLine(self.start_pos, self.end_pos)
             self.update()
             self.save_state()
+        elif event.button() == Qt.LeftButton and self.drawing_rect and self.erasing:
+            self.drawing_rect = False
+            painter = QPainter(self.image)
+            painter.setCompositionMode(QPainter.CompositionMode_Clear)
+            rect = self.get_rect(self.start_pos, self.end_pos)
+            painter.fillRect(rect, Qt.transparent)
+            self.update()
+            self.save_state()
         elif event.button() == Qt.LeftButton and self.drawing_rect:
             self.drawing_rect = False
             painter = QPainter(self.image)
@@ -168,13 +185,18 @@ class OverlayWindow(QMainWindow):
             self.save_state()
 
     def get_rect(self, start, end):
-        return QRect(min(start.x(), end.x()), min(start.y(), end.y()), abs(start.x() - end.x()), abs(start.y() - end.y()))
+        return QRect(min(start.x(), end.x()), min(start.y(), end.y()), abs(start.x() - end.x()),
+                     abs(start.y() - end.y()))
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() == Qt.Key_S:
-            self.toggle_settings_window()
+
+            if self.settings_window.isVisible():
+                self.settings_window.hide()
+            else:
+                self.open_settings_window()
         elif event.key() == Qt.Key_Z and event.modifiers() == Qt.ControlModifier:
             self.undo()
         elif event.key() == Qt.Key_E:
@@ -194,7 +216,7 @@ class OverlayWindow(QMainWindow):
                 pen = QPen(self.pen_color, self.pen_thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
                 painter.setPen(pen)
                 painter.drawRect(rect)
-            elif self.drawing_filled_rect:
+            else:
                 painter.setPen(Qt.NoPen)
                 brush = QBrush(self.pen_color)
                 painter.setBrush(brush)
