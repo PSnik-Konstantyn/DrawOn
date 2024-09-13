@@ -33,10 +33,13 @@ class OverlayWindow(QMainWindow):
         self.open_settings_window()
 
     def open_settings_window(self):
-        if self.settings_window is None:
-            self.settings_window = QWidget(self)
-            layout = QVBoxLayout(self.settings_window)
+        if self.settings_window:
+            self.settings_window.deleteLater()
 
+        self.settings_window = QWidget(self)
+        layout = QVBoxLayout(self.settings_window)
+
+        if not self.erasing:
             thickness_label = QLabel("Thickness", self.settings_window)
             self.thickness_slider = QSlider(Qt.Horizontal, self.settings_window)
             self.thickness_slider.setMinimum(1)
@@ -46,7 +49,14 @@ class OverlayWindow(QMainWindow):
             self.thickness_slider.setTickInterval(1)
             self.thickness_slider.valueChanged.connect(self.change_thickness)
 
-            eraser_label = QLabel("Eraser Thickness", self.settings_window)
+            color_button = QPushButton("Color", self.settings_window)
+            color_button.clicked.connect(self.choose_color)
+
+            layout.addWidget(thickness_label)
+            layout.addWidget(self.thickness_slider)
+            layout.addWidget(color_button)
+        else:
+            eraser_thickness_label = QLabel("Eraser Thickness", self.settings_window)
             self.eraser_slider = QSlider(Qt.Horizontal, self.settings_window)
             self.eraser_slider.setMinimum(1)
             self.eraser_slider.setMaximum(50)
@@ -55,33 +65,20 @@ class OverlayWindow(QMainWindow):
             self.eraser_slider.setTickInterval(1)
             self.eraser_slider.valueChanged.connect(self.change_eraser_thickness)
 
-            color_button = QPushButton("Color", self.settings_window)
-            color_button.clicked.connect(self.choose_color)
-
-            layout.addWidget(thickness_label)
-            layout.addWidget(self.thickness_slider)
-            layout.addWidget(eraser_label)
+            layout.addWidget(eraser_thickness_label)
             layout.addWidget(self.eraser_slider)
-            layout.addWidget(color_button)
 
-            self.settings_window.setLayout(layout)
+        self.settings_window.setLayout(layout)
 
-            palette = self.settings_window.palette()
-            palette.setColor(QPalette.Background, Qt.lightGray)
-            self.settings_window.setAutoFillBackground(True)
-            self.settings_window.setPalette(palette)
+        palette = self.settings_window.palette()
+        palette.setColor(QPalette.Background, Qt.lightGray)
+        self.settings_window.setAutoFillBackground(True)
+        self.settings_window.setPalette(palette)
 
-            self.settings_window.setWindowTitle("Settings")
-            self.settings_window.setWindowFlags(Qt.WindowStaysOnTopHint)
-            self.settings_window.setGeometry(50, 50, 200, 200)
-            self.settings_window.show()
-
-    def toggle_settings_window(self):
-        if self.settings_window is not None:
-            if self.settings_window.isVisible():
-                self.settings_window.hide()
-            else:
-                self.settings_window.show()
+        self.settings_window.setWindowTitle("Settings")
+        self.settings_window.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.settings_window.setGeometry(50, 50, 200, 150)
+        self.settings_window.show()
 
     def choose_color(self):
         color = QColorDialog.getColor(initial=self.pen_color, parent=self)
@@ -95,23 +92,25 @@ class OverlayWindow(QMainWindow):
         self.eraser_thickness = value
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.start_pos = event.pos()
-            self.end_pos = self.start_pos
-            if self.erasing:
+        self.start_pos = event.pos()
+        self.end_pos = self.start_pos
+
+        if self.erasing:
+            if event.button() == Qt.LeftButton:
                 self.drawing = True
-            else:
+            elif event.button() == Qt.RightButton:
+                self.drawing_line = True
+        else:
+            if event.button() == Qt.LeftButton:
                 if event.modifiers() == Qt.ControlModifier:
                     self.drawing_rect = True
                 else:
                     self.drawing = True
-        elif event.button() == Qt.RightButton:
-            self.start_pos = event.pos()
-            self.end_pos = self.start_pos
-            if event.modifiers() == Qt.ControlModifier:
-                self.drawing_filled_rect = True
-            else:
-                self.drawing_line = True
+            elif event.button() == Qt.RightButton:
+                if event.modifiers() == Qt.ControlModifier:
+                    self.drawing_filled_rect = True
+                else:
+                    self.drawing_line = True
 
     def mouseMoveEvent(self, event):
         if self.drawing and event.buttons() & Qt.LeftButton:
@@ -139,7 +138,11 @@ class OverlayWindow(QMainWindow):
         elif event.button() == Qt.RightButton and self.drawing_line:
             self.drawing_line = False
             painter = QPainter(self.image)
-            pen = QPen(self.pen_color, self.pen_thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            if self.erasing:
+                painter.setCompositionMode(QPainter.CompositionMode_Clear)
+                pen = QPen(Qt.transparent, self.eraser_thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            else:
+                pen = QPen(self.pen_color, self.pen_thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
             painter.setPen(pen)
             painter.drawLine(self.start_pos, self.end_pos)
             self.update()
@@ -176,6 +179,7 @@ class OverlayWindow(QMainWindow):
             self.undo()
         elif event.key() == Qt.Key_E:
             self.erasing = not self.erasing
+            self.open_settings_window()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -228,6 +232,3 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     overlay = OverlayWindow()
     sys.exit(app.exec_())
-
-#erase with the rectangle
-#change the start window when changing the mode
