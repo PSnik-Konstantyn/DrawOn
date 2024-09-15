@@ -82,6 +82,7 @@ class OverlayWindow(QMainWindow):
         self.settings_window.setGeometry(50, 50, 200, 150)
         self.settings_window.show()
 
+
     def choose_color(self):
         color = QColorDialog.getColor(initial=self.pen_color, parent=self)
         if color.isValid():
