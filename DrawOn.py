@@ -50,7 +50,6 @@ class OverlayWindow(QMainWindow):
             self.thickness_slider.setTickPosition(QSlider.TicksBelow)
             self.thickness_slider.setTickInterval(1)
             self.thickness_slider.valueChanged.connect(self.change_thickness)
-
             color_button = QPushButton("Color", self.settings_window)
             color_button.clicked.connect(self.choose_color)
 
